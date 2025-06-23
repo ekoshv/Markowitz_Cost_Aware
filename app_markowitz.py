@@ -1,4 +1,3 @@
-# markowitz_cost_aware_optimizer.py
 """
 A Streamlit web application for performing a comparative walk-forward backtest
 of Cost-Aware vs. Classic Markowitz portfolio optimization strategies.
@@ -37,9 +36,51 @@ import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
 import numpy as np
-import quantstats as qs
 from scipy.optimize import minimize
 from typing import Tuple, Optional
+
+# Try to import quantstats, with fallback
+try:
+    import quantstats as qs
+    QUANTSTATS_AVAILABLE = True
+except (ImportError, ModuleNotFoundError) as e:
+    QUANTSTATS_AVAILABLE = False
+    st.warning(f"quantstats not available ({str(e)}). Using built-in statistics functions.")
+
+# Fallback statistics functions if quantstats is not available
+def calculate_cagr(returns_series):
+    """Calculate Compound Annual Growth Rate"""
+    if len(returns_series) < 2:
+        return 0.0
+    total_return = (1 + returns_series).prod() - 1
+    years = len(returns_series) / 252  # Assuming 252 trading days per year
+    if years <= 0:
+        return 0.0
+    return (1 + total_return) ** (1 / years) - 1
+
+def calculate_sharpe_ratio(returns_series, risk_free_rate=0.02):
+    """Calculate Sharpe Ratio"""
+    if len(returns_series) < 2:
+        return 0.0
+    excess_returns = returns_series - risk_free_rate / 252
+    if excess_returns.std() == 0:
+        return 0.0
+    return np.sqrt(252) * excess_returns.mean() / excess_returns.std()
+
+def calculate_max_drawdown(returns_series):
+    """Calculate Maximum Drawdown"""
+    if len(returns_series) < 2:
+        return 0.0
+    cumulative = (1 + returns_series).cumprod()
+    running_max = cumulative.expanding().max()
+    drawdown = (cumulative - running_max) / running_max
+    return drawdown.min()
+
+def calculate_volatility(returns_series):
+    """Calculate Annualized Volatility"""
+    if len(returns_series) < 2:
+        return 0.0
+    return returns_series.std() * np.sqrt(252)
 
 # --- Data Acquisition and Preparation ---
 
@@ -437,8 +478,8 @@ def main():
             ret_series = df['ret']
             if not ret_series.empty and ret_series.std() != 0:
                 stats_data[name.replace('_', ' ').title()] = {
-                    "CAGR": qs.stats.cagr(ret_series), "Sharpe Ratio": qs.stats.sharpe(ret_series),
-                    "Max Drawdown": qs.stats.max_drawdown(ret_series), "Volatility (Ann.)": qs.stats.volatility(ret_series)
+                    "CAGR": calculate_cagr(ret_series), "Sharpe Ratio": calculate_sharpe_ratio(ret_series),
+                    "Max Drawdown": calculate_max_drawdown(ret_series), "Volatility (Ann.)": calculate_volatility(ret_series)
                 }
         stats_df = pd.DataFrame(stats_data).T
         st.dataframe(stats_df.style.format({"CAGR": "{:.2%}", "Max Drawdown": "{:.2%}", "Volatility (Ann.)": "{:.2%}", "Sharpe Ratio": "{:.2f}"}), use_container_width=True)
