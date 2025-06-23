@@ -1,7 +1,7 @@
 # Comparative Markowitz Walk-Forward Optimizer
 
 A robust, point-in-time backtesting application that implements a comparative analysis between Cost-Aware and Classic Markowitz portfolio optimization strategies. This application is specifically designed to eliminate common backtesting biases including data leakage, look-ahead bias, and survivorship bias.
-
+![Strategy Returns Comparison](return.png)
 ## 🎯 Key Features
 
 - **Cost-Aware vs Classic Markowitz Comparison**: Implements both optimization strategies with transaction cost modeling
